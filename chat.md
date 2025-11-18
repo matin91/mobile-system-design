@@ -207,7 +207,112 @@ Reason: react-query is optimized for server sync and cache semantics; redux is b
 
 ---
 
-## 10) Example code snippets
+## 10) Mermaid diagram (high level design)
+
+Paste the block below into a Mermaid renderer (e.g., Mermaid Live Editor, VS Code Mermaid plugin, or GitHub Markdown with Mermaid support) to visualize the architecture.
+
+```mermaid
+flowchart LR
+  %% Client group
+  subgraph Client[React Native App]
+    direction TB
+
+    subgraph UI[UI Layer]
+      direction LR
+      ChatListScreen["ChatListScreen\n(uses useChatList)"]
+      ChatThreadScreen["ChatThreadScreen\n(uses useChatThread, inverted FlatList)"]
+    end
+
+    subgraph Presentation[Presentation & Hooks]
+      direction TB
+      ChatCoordinator["ChatCoordinator\n(prefetching, manages subscriptions)"]
+      useChatList["useChatList (react-query)"]
+      useChatThread["useChatThread (useInfiniteQuery)"]
+      useSendMessage["useSendMessage (mutation, optimistic)"]
+    end
+
+    subgraph State["State Layer"]
+      direction LR
+      ReactQuery["react-query\n(query cache, mutations, persistence)"]
+      ReduxStore["Redux\n(auth, offlineQueue, presence, UI state)"]
+      Persistors["persistQueryClient\nredux-persist / AsyncStorage (or MMKV)"]
+    end
+
+    subgraph Services["Network & Realtime"]
+      direction TB
+      ApiClient["API Client (axios/fetch)\n/ REST endpoints"]
+      PusherClient["Pusher Client\n(private/presence channels)"]
+      UploadWorker["Upload Worker\n(presign -> PUT -> complete)"]
+    end
+
+    subgraph LocalStorage["Local Persistence"]
+      direction LR
+      AsyncStorage["AsyncStorage\n(persist react-query + redux)"]
+      LocalDB["Optional Local DB\n(Realm / SQLite)"]
+      FileCache["Image Cache (FastImage / native cache)"]
+    end
+
+    %% UI -> Hooks/Coordinator
+    ChatListScreen --> useChatList
+    ChatThreadScreen --> useChatThread
+    ChatThreadScreen --> useSendMessage
+    ChatListScreen --> ChatCoordinator
+    ChatThreadScreen --> ChatCoordinator
+
+    %% Hooks -> State / Services
+    useChatList --> ReactQuery
+    useChatThread --> ReactQuery
+    useSendMessage --> ReactQuery
+    useSendMessage --> ReduxStore
+
+    ChatCoordinator --> PusherClient
+    ChatCoordinator --> ApiClient
+
+    %% State interacts with services
+    ReactQuery --> ApiClient
+    ReactQuery -->|persist| Persistors
+    ReduxStore -->|persist| Persistors
+
+    %% Offline queue -> Upload worker & API
+    ReduxStore -- enqueue failed sends --> UploadWorker
+    UploadWorker --> ApiClient
+    UploadWorker --> FileCache
+
+    %% Realtime from pusher to react-query & redux
+    PusherClient -->|message_created / message_updated| ReactQuery
+    PusherClient -->|typing / presence events| ReduxStore
+
+    %% Persistence arrows
+    Persistors --> AsyncStorage
+    ReactQuery --> LocalDB
+    ReduxStore --> LocalDB
+    FileCache --> LocalDB
+
+  end
+
+  %% Server group
+  subgraph Server[Backend Services]
+    direction TB
+    REST["REST API\nGET /chat/all\nGET /chat/{id}/all\nPOST /chat/{id}/message\nPOST /uploads/presign"]
+    PusherAuth["Pusher Auth\n(private/presence channel auth)"]
+    FileStorage["File Storage\nS3 / CDN (presigned URLs)"]
+    DB["Server DB\n(messages, chats, users)"]
+  end
+
+  %% Connections client <-> server
+  ApiClient -- HTTP --> REST
+  PusherClient -- WebSocket (via Pusher) --> PusherAuth
+  UploadWorker -- PUT to presigned URL --> FileStorage
+  REST --> DB
+  FileStorage --> CDN["CDN / public URLs"]
+
+  classDef service fill:#f9f,stroke:#333,stroke-width:1px;
+  class ApiClient,PusherClient,UploadWorker service;
+```
+
+-----
+
+## 11) Example code snippets
 
 Below are abridged snippets you can paste into your project. They show API client, pusher init & subscription, react-query hooks, redux slices, and a sample screen. These are starting points — adapt to your project structure and TypeScript/JS preferences.
 
@@ -496,7 +601,7 @@ export function useSendMessage() {
 
 ---
 
-## 11) Sequence flows (brief)
+## 12) Sequence flows (brief)
 
 - Open chat:
     - ChatListScreen uses useQuery('chats') (react-query).
@@ -515,7 +620,7 @@ export function useSendMessage() {
 
 ---
 
-## 12) Ops & security notes
+## 13) Ops & security notes
 
 - Authenticate pusher subscriptions via server endpoint (with token).
 - Short-lived tokens and refresh flow: reinitialize or update Pusher auth headers after refresh.
@@ -523,108 +628,3 @@ export function useSendMessage() {
 - Use rate limiting and server-side validation for uploads.
 - Use CDN for attachment delivery and caching.
 
----
-
-## 13) Mermaid diagram (high level design)
-
-Paste the block below into a Mermaid renderer (e.g., Mermaid Live Editor, VS Code Mermaid plugin, or GitHub Markdown with Mermaid support) to visualize the architecture.
-
-```mermaid
-flowchart LR
-  %% Client group
-  subgraph Client[React Native App]
-    direction TB
-
-    subgraph UI[UI Layer]
-      direction LR
-      ChatListScreen["ChatListScreen\n(uses useChatList)"]
-      ChatThreadScreen["ChatThreadScreen\n(uses useChatThread, inverted FlatList)"]
-    end
-
-    subgraph Presentation[Presentation & Hooks]
-      direction TB
-      ChatCoordinator["ChatCoordinator\n(prefetching, manages subscriptions)"]
-      useChatList["useChatList (react-query)"]
-      useChatThread["useChatThread (useInfiniteQuery)"]
-      useSendMessage["useSendMessage (mutation, optimistic)"]
-    end
-
-    subgraph State["State Layer"]
-      direction LR
-      ReactQuery["react-query\n(query cache, mutations, persistence)"]
-      ReduxStore["Redux\n(auth, offlineQueue, presence, UI state)"]
-      Persistors["persistQueryClient\nredux-persist / AsyncStorage (or MMKV)"]
-    end
-
-    subgraph Services["Network & Realtime"]
-      direction TB
-      ApiClient["API Client (axios/fetch)\n/ REST endpoints"]
-      PusherClient["Pusher Client\n(private/presence channels)"]
-      UploadWorker["Upload Worker\n(presign -> PUT -> complete)"]
-    end
-
-    subgraph LocalStorage["Local Persistence"]
-      direction LR
-      AsyncStorage["AsyncStorage\n(persist react-query + redux)"]
-      LocalDB["Optional Local DB\n(Realm / SQLite)"]
-      FileCache["Image Cache (FastImage / native cache)"]
-    end
-
-    %% UI -> Hooks/Coordinator
-    ChatListScreen --> useChatList
-    ChatThreadScreen --> useChatThread
-    ChatThreadScreen --> useSendMessage
-    ChatListScreen --> ChatCoordinator
-    ChatThreadScreen --> ChatCoordinator
-
-    %% Hooks -> State / Services
-    useChatList --> ReactQuery
-    useChatThread --> ReactQuery
-    useSendMessage --> ReactQuery
-    useSendMessage --> ReduxStore
-
-    ChatCoordinator --> PusherClient
-    ChatCoordinator --> ApiClient
-
-    %% State interacts with services
-    ReactQuery --> ApiClient
-    ReactQuery -->|persist| Persistors
-    ReduxStore -->|persist| Persistors
-
-    %% Offline queue -> Upload worker & API
-    ReduxStore -- enqueue failed sends --> UploadWorker
-    UploadWorker --> ApiClient
-    UploadWorker --> FileCache
-
-    %% Realtime from pusher to react-query & redux
-    PusherClient -->|message_created / message_updated| ReactQuery
-    PusherClient -->|typing / presence events| ReduxStore
-
-    %% Persistence arrows
-    Persistors --> AsyncStorage
-    ReactQuery --> LocalDB
-    ReduxStore --> LocalDB
-    FileCache --> LocalDB
-
-  end
-
-  %% Server group
-  subgraph Server[Backend Services]
-    direction TB
-    REST["REST API\nGET /chat/all\nGET /chat/{id}/all\nPOST /chat/{id}/message\nPOST /uploads/presign"]
-    PusherAuth["Pusher Auth\n(private/presence channel auth)"]
-    FileStorage["File Storage\nS3 / CDN (presigned URLs)"]
-    DB["Server DB\n(messages, chats, users)"]
-  end
-
-  %% Connections client <-> server
-  ApiClient -- HTTP --> REST
-  PusherClient -- WebSocket (via Pusher) --> PusherAuth
-  UploadWorker -- PUT to presigned URL --> FileStorage
-  REST --> DB
-  FileStorage --> CDN["CDN / public URLs"]
-
-  classDef service fill:#f9f,stroke:#333,stroke-width:1px;
-  class ApiClient,PusherClient,UploadWorker service;
-```
------
