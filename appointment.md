@@ -1,5 +1,7 @@
 # Appointment Management — History, Reschedule & Cancel
 
+<img width="3200" height="1520" alt="svgviewer-png-output (2)" src="https://github.com/user-attachments/assets/8d24f7fc-b826-4f53-bb94-50f5d99db6ef" />
+
 
 ## 1) Requirements
 
@@ -526,7 +528,3 @@ export default slice.reducer;
     - Provider or system emits timeslot.updated or booking.updated -> Pusher -> clients patch react-query cache and update UI immediately (disable slots, update appointment status).
 
 ---
-
-What I did: I transformed the appointment-management screenshot into a structured implementation blueprint preserving your requested markdown sequence and focusing on react-query for data, Redux for UI/durable state, and Pusher for realtime updates. The document includes endpoints, data models, reservation locking strategy, idempotent mutations, example code for hooks/APIs/pusher, UX considerations, and operational notes.
-
-What I can do next: generate ready-to-drop React Native component stubs (AppointmentsList, AppointmentDetail, RescheduleScreen) wired to these hooks and Pusher subscriptions, or produce an API contract (OpenAPI spec) for the Reservations/Bookings endpoints. Tell me which you'd like and I’ll produce it.
