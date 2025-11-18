@@ -1,10 +1,6 @@
 # Image 4 — Product Catalog -> Cart (Mobile Shopping Flow)
 
-Short visual description:
-- The image shows two mobile mockups side-by-side with an arrow pointing from the left to the right.
-  - Left screen titled "Product Catalog" — a vertical list of products (thumbnail, title, price, "Add · Wishlist" actions and a red "Img" placeholder at the right of each row).
-  - Right screen titled "Cart" — list of items added (thumbnail, title, qty & line price, red "Img" placeholder on the right). Below the list is a subtotal, a "Checkout" primary button and a "Continue shopping" link.
-- The visual conveys the UX: tapping a product or its add button moves it into the Cart where quantity and subtotal are shown prior to checkout.
+<img width="567" height="389" alt="Screen Shot 2025-11-17 at 11 47 43 PM" src="https://github.com/user-attachments/assets/b201884b-6e36-4a0d-96d3-5ab289f7a6f1" />
 
 ---
 
