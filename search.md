@@ -1,5 +1,8 @@
 # Mobile UX — Search / Browse Providers with Filters (react-query, redux & Pusher)
 
+<img width="2800" height="1520" alt="svgviewer-png-output" src="https://github.com/user-attachments/assets/b4611899-2686-4bfe-8e68-7f71644136e5" />
+
+
 ## 1) Requirements
 
 - Functional
