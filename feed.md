@@ -1,5 +1,7 @@
 # Mobile System Design — Facebook News Feed (mobile)
 
+<img width="693" height="454" alt="Screen Shot 2025-11-17 at 10 23 21 PM" src="https://github.com/user-attachments/assets/19b88ed0-7183-475e-a887-63992c6a2572" />
+
 ## 1) Requirements
 
 - Functional requirements
