@@ -1,5 +1,7 @@
 # Mobile Reminders — Schedule & Edit Medication Reminders
 
+<img width="4320" height="3840" alt="svgviewer-png-output (5)" src="https://github.com/user-attachments/assets/11c7355a-083b-4256-bc10-b8191cbf3e56" />
+
 
 ## 1) Requirements
 
