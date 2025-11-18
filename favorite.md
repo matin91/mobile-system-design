@@ -1,5 +1,6 @@
 # Bookmarks / Favorites — Save Preferred Providers
 
+<img width="3200" height="1520" alt="svgviewer-png-output (4)" src="https://github.com/user-attachments/assets/3194377a-97b2-4f83-96cd-e3ad9592d12c" />
 
 ## 1) Requirements
 
