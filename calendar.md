@@ -1,5 +1,7 @@
 # Image 10 — In-app Calendar & Availability View
 
+<img width="3200" height="1520" alt="svgviewer-png-output (3)" src="https://github.com/user-attachments/assets/358f1520-198c-4fb7-9105-55ecdfd2371c" />
+
 
 ## 1) Requirements
 
