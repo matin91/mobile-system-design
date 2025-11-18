@@ -1,5 +1,8 @@
 # React‑Native Messenger — Design for React Query, Redux & Pusher
 
+![4324fdd3-cacf-4680-a9b5-69e341702b93-0](https://github.com/user-attachments/assets/319e755f-74f9-499e-8dc0-0c80cbdb0bfa)
+
+
 ## 1) Requirements
 
 - Functional requirements
