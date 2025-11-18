@@ -1,5 +1,8 @@
 # Book Appointment — Select Provider, Service & Date/Time
 
+<img width="3200" height="1520" alt="svgviewer-png-output (1)" src="https://github.com/user-attachments/assets/544059fb-ae36-4939-9fed-85b61d78a6c5" />
+
+
 ## 1) Requirements
 
 - Functional
