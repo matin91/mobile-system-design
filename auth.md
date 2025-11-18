@@ -1,5 +1,8 @@
 # Mobile Auth Flow — Login, OTP (SMS) & Protected Screen
 
+<img width="736" height="366" alt="Screen Shot 2025-11-18 at 12 11 29 AM" src="https://github.com/user-attachments/assets/51c834e6-06f7-407d-b980-a4a79c0c6ed8" />
+
+
 ## 1) Requirements
 
 - Functional requirements
