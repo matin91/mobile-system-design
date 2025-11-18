@@ -165,64 +165,64 @@ flowchart LR
 
     subgraph UI[UI Layer]
       direction LR
-      LoginScreen["Login Screen\n(email + password)"]
-      VerifyScreen["Verify OTP Screen\n(6-digit code, resend)"]
-      ProtectedScreen["Protected Screen\n(Dashboard)"]
+      LoginScreen["LoginScreen\n(uses LoginForm)"]
+      VerifyScreen["VerifyScreen\n(uses OTPForm)"]
+      ProtectedScreen["ProtectedScreen\n(behind Auth Guard)"]
     end
 
     subgraph Presentation[Presentation & Hooks]
       direction TB
-      AuthGuard["Auth Guard\n(validate token / refresh)"]
-      useAuth["useAuth / useAuthGuard\n(hooks & context)"]
-      LoginForm["Login Form\n(calls login API)"]
-      OTPForm["OTP Form\n(calls verifyOtp / resend)"]
+      AuthGuard["Auth Guard\n(useAuthGuard)"]
+      useAuth["useAuth / useAuthGuard\n(src/hooks/useAuth.ts)"]
+      LoginForm["Login Form\n(calls src/api/authApi.login)"]
+      OTPForm["OTP Form\n(calls src/api/authApi.verifyOtp / resend)"]
     end
 
     subgraph Services[Network & Realtime]
       direction TB
-      APIClient["API Client\n(axios / fetch)\nPOST /auth/login\nPOST /auth/otp/verify\nPOST /auth/refresh\nPOST /auth/logout"]
+      AuthApiClient["authApi (axios)\nsrc/api/authApi.ts\nPOST /auth/login\nPOST /auth/otp/verify\nPOST /auth/refresh\nPOST /auth/logout"]
       Realtime["Realtime / Push\n(FCM / WebSocket) (optional)"]
     end
 
     subgraph State[State Layer]
       direction LR
-      InMemorySession["In-memory Session\n(auth state)"]
-      QueryCache["Query Cache\n(react-query / SWR)"]
-      ReduxStore["Redux\n(offlineQueue, UI state)"]
+      InMemorySession["In-memory Session\n(session object)"]
+      ReduxStore["Redux\n(auth slice, offlineQueue)"]
+      QueryCache["Optional react-query\n(query cache, mutations)"]
     end
 
     subgraph LocalStorage[Local Persistence]
       direction LR
-      SecureStore["Secure Storage\n(Keychain / EncryptedSharedPrefs)"]
-      LocalDB["Local DB\n(Realm / SQLite)"]
+      TokenStore["TokenStore\nsrc/services/tokenStore.ts\n(Keychain / SecureStore)"]
+      LocalDB["Local DB\n(Realm / SQLite) (optional)"]
     end
 
     %% UI -> Presentation
     LoginScreen --> LoginForm
     VerifyScreen --> OTPForm
-    LoginForm --> AuthGuard
-    OTPForm --> AuthGuard
     LoginForm --> useAuth
     OTPForm --> useAuth
+    LoginForm --> AuthGuard
+    OTPForm --> AuthGuard
     AuthGuard --> ProtectedScreen
 
     %% Presentation -> Services
-    useAuth --> APIClient
-    AuthGuard --> APIClient
+    useAuth --> AuthApiClient
+    AuthGuard --> AuthApiClient
 
-    %% Services -> Backend (external)
-    APIClient -->|HTTP| AuthAPI
+    %% Services -> Server (external)
+    AuthApiClient -->|HTTP| ServerAuthAPI
 
     %% State interactions
     useAuth --> InMemorySession
     InMemorySession --> QueryCache
     InMemorySession --> ReduxStore
-    ReduxStore -- enqueue failed actions --> APIClient
+    ReduxStore -- enqueue failed actions --> AuthApiClient
 
     %% Persistence
-    APIClient --> SecureStore
-    InMemorySession --> SecureStore
-    SecureStore --> LocalDB
+    AuthApiClient --> TokenStore
+    InMemorySession --> TokenStore
+    TokenStore --> LocalDB
     QueryCache --> LocalDB
 
     %% Realtime
@@ -234,20 +234,20 @@ flowchart LR
   %% Server group
   subgraph Server[Backend Services]
     direction TB
-    AuthAPI["Auth API\n/login\n/otp/verify\n/refresh\n/logout"]
+    ServerAuthAPI["Auth API\n/login\n/otp/verify\n/refresh\n/logout"]
     TokenSvc["Token Service\n(issue & validate tokens)"]
     OTPProvider["SMS Provider\n(Twilio / Vendor)"]
     SessionStore["Session / Refresh Store\n(DB or Redis)"]
   end
 
   %% Connections client <-> server
-  APIClient -- HTTP --> AuthAPI
-  AuthAPI --> TokenSvc
-  AuthAPI --> OTPProvider
+  AuthApiClient -- HTTP --> ServerAuthAPI
+  ServerAuthAPI --> TokenSvc
+  ServerAuthAPI --> OTPProvider
   TokenSvc --> SessionStore
 
   classDef service fill:#f9f,stroke:#333,stroke-width:1px;
-  class APIClient,TokenSvc,OTPProvider service;
+  class AuthApiClient,TokenSvc,OTPProvider service;
 ```
 
 -----

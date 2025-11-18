@@ -144,48 +144,108 @@ Paste into a mermaid renderer to visualize the architecture.
 
 ```mermaid
 flowchart LR
-  subgraph Mobile[Mobile App]
+  %% Client group
+  subgraph Client[Mobile App]
     direction TB
-    ProdList["Product Catalog\n(Virtualized list)"]
-    ProdDetail["Product Detail"]
-    CartScreen["Cart Screen\n(edit qty, subtotal)"]
-    Checkout["Checkout Entry"]
-    LocalStore["Local Cart Store\n(AsyncStorage / MMKV)"]
-    OfflineQueue["Offline Mutation Queue"]
-    ProdList --> LocalStore
-    ProdDetail --> LocalStore
-    CartScreen --> LocalStore
+
+    subgraph UI[UI Layer]
+      direction LR
+      ProdList["ProductListScreen\n(uses useProducts)"]
+      ProdDetail["ProductDetailScreen\n(uses useProduct)"]
+      CartScreen["CartScreen\n(edit qty, subtotal)"]
+      Checkout["CheckoutScreen\n(validate cart -> POST /orders)"]
+    end
+
+    subgraph Presentation[Presentation & Hooks]
+      direction TB
+      ProductCoordinator["ProductCoordinator\n(prefetch, cart merge)"]
+      useProducts["useProducts (useInfiniteQuery)\nsrc/hooks/useProducts.ts"]
+      useProduct["useProduct (query)\nsrc/hooks/useProduct.ts"]
+      useAddToCart["useAddToCart (optimistic)\nsrc/hooks/useAddToCart.ts"]
+    end
+
+    subgraph Services[Network & CDN]
+      direction TB
+      ApiClient["API Client (axios)\nsrc/api/shopApi.ts\nGET /products\nGET /products/{id}\nPOST /cart/items\nPOST /cart/validate\nPOST /orders\nPOST /uploads/presign"]
+      CDN["CDN (images, thumbnails)"]
+      UploadWorker["Upload Worker\n(presign -> PUT -> complete)"]
+    end
+
+    subgraph State[State Layer]
+      direction LR
+      ReactQuery["react-query\n(query cache, mutations, persistence)"]
+      ReduxStore["Redux\n(cart local, offlineQueue, UI state)"]
+      Persistors["persistQueryClient\nredux-persist / AsyncStorage (or MMKV)"]
+    end
+
+    subgraph LocalStorage[Local Persistence]
+      direction LR
+      AsyncStorage["AsyncStorage\n(persist react-query + redux)"]
+      LocalDB["Local DB\n(Realm / SQLite) (optional)"]
+      ImageCache["Image Cache\n(FastImage / native cache)"]
+    end
+
+    %% UI -> Presentation
+    ProdList --> useProducts
+    ProdDetail --> useProduct
+    ProdDetail --> useAddToCart
+    CartScreen --> useAddToCart
+    ProdList --> ProductCoordinator
+    CartScreen --> ProductCoordinator
+
+    %% Presentation -> Services
+    useProducts --> ApiClient
+    useProduct --> ApiClient
+    useAddToCart --> ApiClient
+    ProductCoordinator --> ApiClient
+    ProductCoordinator --> CDN
+
+    %% State interacts with services
+    ReactQuery --> ApiClient
+    ReactQuery -->|persist| Persistors
+    ReduxStore -->|persist| Persistors
+
+    %% Offline queue -> Upload worker & API
+    ReduxStore -- enqueue failed mutations --> UploadWorker
+    UploadWorker --> ApiClient
+    UploadWorker --> ImageCache
+
+    %% CDN & persistence arrows
+    ApiClient --> CDN
+    Persistors --> AsyncStorage
+    ReactQuery --> LocalDB
+    ReduxStore --> LocalDB
+    ImageCache --> LocalDB
   end
 
-  subgraph Edge[CDN & API]
-    CDN["CDN (images, thumbnails)"]
-    API["API Gateway"]
-  end
-
-  subgraph Backend[Services]
+  %% Server group
+  subgraph Server[Backend Services]
+    direction TB
     Catalog["Catalog Service\n(products, images metadata)"]
     CartSvc["Cart Service\n(cart persistence, merge)"]
     Inventory["Inventory Service"]
     Pricing["Pricing & Promotions"]
     Orders["Orders & Payments"]
+    FileStorage["File Storage\nS3 / CDN (presigned URLs)"]
     Events["Event Bus\n(price/inventory updates)"]
-    Cache["Redis Cache"]
+    DB["Server DB\n(products, carts, orders)"]
   end
 
-  Mobile -->|HTTP| API
-  API --> Catalog
-  API --> CartSvc
-  API --> Inventory
-  API --> Pricing
-  API --> Orders
-  CDN --> Catalog
+  %% Connections client <-> server
+  ApiClient -- HTTP --> Catalog
+  ApiClient -- HTTP --> CartSvc
+  ApiClient -- HTTP --> Inventory
+  ApiClient -- HTTP --> Pricing
+  ApiClient -- HTTP --> Orders
+  UploadWorker -- PUT to presigned URL --> FileStorage
+  Catalog --> FileStorage
+  FileStorage --> CDN
   Catalog --> Events
   Inventory --> Events
-  Events --> Cache
-  CartSvc --> Cache
+  Events --> DB
 
   classDef service fill:#f9f,stroke:#333,stroke-width:1px;
-  class Catalog,CartSvc,Inventory,Pricing,Orders service;
+  class ApiClient,UploadWorker service;
 ```
 
 ---
