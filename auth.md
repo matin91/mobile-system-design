@@ -158,90 +158,96 @@ Realtime / push:
 Paste the block below into a Mermaid renderer to visualize the flow.
 
 ```mermaid
-flowchart TB
-  %% Layers top-to-bottom: UI -> Presentation & Hooks -> Network & Realtime -> State Layer -> Local Persistence -> Backend Services
-
-  %% UI Layer (screens)
-  subgraph UI["UI Layer\n(Screens)"]
+flowchart LR
+  %% Client group
+  subgraph Client[Mobile App]
     direction TB
-    LoginScreen["Login Screen\n(email + password)"]
-    VerifyScreen["Verify OTP Screen\n(6-digit code, resend)"]
-    Dashboard["Protected Dashboard\n(only if authorized)"]
+
+    subgraph UI[UI Layer]
+      direction LR
+      LoginScreen["Login Screen\n(email + password)"]
+      VerifyScreen["Verify OTP Screen\n(6-digit code, resend)"]
+      ProtectedScreen["Protected Screen\n(Dashboard)"]
+    end
+
+    subgraph Presentation[Presentation & Hooks]
+      direction TB
+      AuthGuard["Auth Guard\n(validate token / refresh)"]
+      useAuth["useAuth / useAuthGuard\n(hooks & context)"]
+      LoginForm["Login Form\n(calls login API)"]
+      OTPForm["OTP Form\n(calls verifyOtp / resend)"]
+    end
+
+    subgraph Services[Network & Realtime]
+      direction TB
+      APIClient["API Client\n(axios / fetch)\nPOST /auth/login\nPOST /auth/otp/verify\nPOST /auth/refresh\nPOST /auth/logout"]
+      Realtime["Realtime / Push\n(FCM / WebSocket) (optional)"]
+    end
+
+    subgraph State[State Layer]
+      direction LR
+      InMemorySession["In-memory Session\n(auth state)"]
+      QueryCache["Query Cache\n(react-query / SWR)"]
+      ReduxStore["Redux\n(offlineQueue, UI state)"]
+    end
+
+    subgraph LocalStorage[Local Persistence]
+      direction LR
+      SecureStore["Secure Storage\n(Keychain / EncryptedSharedPrefs)"]
+      LocalDB["Local DB\n(Realm / SQLite)"]
+    end
+
+    %% UI -> Presentation
+    LoginScreen --> LoginForm
+    VerifyScreen --> OTPForm
+    LoginForm --> AuthGuard
+    OTPForm --> AuthGuard
+    LoginForm --> useAuth
+    OTPForm --> useAuth
+    AuthGuard --> ProtectedScreen
+
+    %% Presentation -> Services
+    useAuth --> APIClient
+    AuthGuard --> APIClient
+
+    %% Services -> Backend (external)
+    APIClient -->|HTTP| AuthAPI
+
+    %% State interactions
+    useAuth --> InMemorySession
+    InMemorySession --> QueryCache
+    InMemorySession --> ReduxStore
+    ReduxStore -- enqueue failed actions --> APIClient
+
+    %% Persistence
+    APIClient --> SecureStore
+    InMemorySession --> SecureStore
+    SecureStore --> LocalDB
+    QueryCache --> LocalDB
+
+    %% Realtime
+    Realtime --> OTPForm
+    Realtime --> InMemorySession
+
   end
 
-  %% Presentation & Hooks (guards, hooks, form components)
-  subgraph Presentation["Presentation & Hooks\n(guards, hooks, UI state)"]
+  %% Server group
+  subgraph Server[Backend Services]
     direction TB
-    AuthGuard["Auth Guard\n(validate token / refresh)"]
-    UseAuth["useAuth / useAuthGuard\n(hooks & context)"]
-    LoginForm["Login Form Component"]
-    OTPForm["OTP Form Component"]
-  end
-
-  %% Network & Realtime (API client, realtime/push)
-  subgraph Network["Network & Realtime\n(API client, realtime)"]
-    direction TB
-    APIClient["API Client\n(axios / fetch)" ]
-    Realtime["Realtime / Push\n(FCM / WebSocket)" ]
-  end
-
-  %% State Layer (in-memory session, caches, offline queue)
-  subgraph State["State Layer\n(in-memory session, caches, offline queue)"]
-    direction TB
-    InMemorySession["In-memory Session\n(auth state)"]
-    QueryCache["Query Cache\n(react-query / SWR)"]
-    OfflineQueue["Offline Queue\n(mutations)" ]
-  end
-
-  %% Local Persistence (secure storage, local DB)
-  subgraph Local["Local Persistence\n(secure storage, local DB)"]
-    direction TB
-    SecureStore["Secure Storage\n(Keychain / EncryptedSharedPrefs)"]
-    LocalDB["Local DB / IndexedDB / SQLite"]
-  end
-
-  %% Backend Services
-  subgraph Backend["Backend Services\n(auth, tokens, providers)"]
-    direction TB
-    AuthAPI["Auth API\n(login, otp, refresh, logout)"]
+    AuthAPI["Auth API\n/login\n/otp/verify\n/refresh\n/logout"]
     TokenSvc["Token Service\n(issue & validate tokens)"]
     OTPProvider["SMS Provider\n(Twilio / Vendor)"]
     SessionStore["Session / Refresh Store\n(DB or Redis)"]
   end
 
-  %% --- Connections ---
-  %% UI -> Presentation
-  LoginScreen --> LoginForm
-  VerifyScreen --> OTPForm
-  LoginForm --> AuthGuard
-  OTPForm --> AuthGuard
-
-  %% Presentation -> Network
-  AuthGuard --> UseAuth
-  UseAuth --> APIClient
-
-  %% Network -> Backend & Realtime
-  APIClient -->|HTTP| AuthAPI
-  APIClient -->|Subscribe / Push| Realtime
-  Realtime --> OTPForm
-
-  %% State interactions
-  UseAuth --> InMemorySession
-  InMemorySession --> QueryCache
-  InMemorySession --> OfflineQueue
-
-  %% Persistence
-  APIClient --> SecureStore
-  InMemorySession --> SecureStore
-  SecureStore --> LocalDB
-
-  %% Backend internals
+  %% Connections client <-> server
+  APIClient -- HTTP --> AuthAPI
   AuthAPI --> TokenSvc
   AuthAPI --> OTPProvider
   TokenSvc --> SessionStore
 
-  classDef layer fill:#f6f8fa,stroke:#333,stroke-width:1px;
-  class UI,Presentation,Network,State,Local,Backend layer;
+  classDef service fill:#f9f,stroke:#333,stroke-width:1px;
+  class APIClient,TokenSvc,OTPProvider service;
 ```
 
 -----
