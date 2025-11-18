@@ -158,35 +158,90 @@ Realtime / push:
 Paste the block below into a Mermaid renderer to visualize the flow.
 
 ```mermaid
-flowchart LR
-  subgraph Client[Mobile App]
+flowchart TB
+  %% Layers top-to-bottom: UI -> Presentation & Hooks -> Network & Realtime -> State Layer -> Local Persistence -> Backend Services
+
+  %% UI Layer (screens)
+  subgraph UI["UI Layer\n(Screens)"]
     direction TB
     LoginScreen["Login Screen\n(email + password)"]
     VerifyScreen["Verify OTP Screen\n(6-digit code, resend)"]
-    AuthGuard["Auth Guard\n(validate token / refresh)"]
     Dashboard["Protected Dashboard\n(only if authorized)"]
-
-    LoginScreen -->|POST /auth/login| AuthAPI
-    LoginScreen --> VerifyScreen
-    VerifyScreen -->|POST /auth/otp/verify| AuthAPI
-    AuthGuard --> Dashboard
   end
 
-  subgraph Server[Auth Backend]
+  %% Presentation & Hooks (guards, hooks, form components)
+  subgraph Presentation["Presentation & Hooks\n(guards, hooks, UI state)"]
+    direction TB
+    AuthGuard["Auth Guard\n(validate token / refresh)"]
+    UseAuth["useAuth / useAuthGuard\n(hooks & context)"]
+    LoginForm["Login Form Component"]
+    OTPForm["OTP Form Component"]
+  end
+
+  %% Network & Realtime (API client, realtime/push)
+  subgraph Network["Network & Realtime\n(API client, realtime)"]
+    direction TB
+    APIClient["API Client\n(axios / fetch)" ]
+    Realtime["Realtime / Push\n(FCM / WebSocket)" ]
+  end
+
+  %% State Layer (in-memory session, caches, offline queue)
+  subgraph State["State Layer\n(in-memory session, caches, offline queue)"]
+    direction TB
+    InMemorySession["In-memory Session\n(auth state)"]
+    QueryCache["Query Cache\n(react-query / SWR)"]
+    OfflineQueue["Offline Queue\n(mutations)" ]
+  end
+
+  %% Local Persistence (secure storage, local DB)
+  subgraph Local["Local Persistence\n(secure storage, local DB)"]
+    direction TB
+    SecureStore["Secure Storage\n(Keychain / EncryptedSharedPrefs)"]
+    LocalDB["Local DB / IndexedDB / SQLite"]
+  end
+
+  %% Backend Services
+  subgraph Backend["Backend Services\n(auth, tokens, providers)"]
     direction TB
     AuthAPI["Auth API\n(login, otp, refresh, logout)"]
-    OTPProvider["SMS Provider\n(Twilio/Provider)"]
     TokenSvc["Token Service\n(issue & validate tokens)"]
-    SessionStore["Session/Refresh Store\n(DB or Redis)"]
+    OTPProvider["SMS Provider\n(Twilio / Vendor)"]
+    SessionStore["Session / Refresh Store\n(DB or Redis)"]
   end
 
-  Client -->|HTTP| AuthAPI
-  AuthAPI --> OTPProvider
+  %% --- Connections ---
+  %% UI -> Presentation
+  LoginScreen --> LoginForm
+  VerifyScreen --> OTPForm
+  LoginForm --> AuthGuard
+  OTPForm --> AuthGuard
+
+  %% Presentation -> Network
+  AuthGuard --> UseAuth
+  UseAuth --> APIClient
+
+  %% Network -> Backend & Realtime
+  APIClient -->|HTTP| AuthAPI
+  APIClient -->|Subscribe / Push| Realtime
+  Realtime --> OTPForm
+
+  %% State interactions
+  UseAuth --> InMemorySession
+  InMemorySession --> QueryCache
+  InMemorySession --> OfflineQueue
+
+  %% Persistence
+  APIClient --> SecureStore
+  InMemorySession --> SecureStore
+  SecureStore --> LocalDB
+
+  %% Backend internals
   AuthAPI --> TokenSvc
+  AuthAPI --> OTPProvider
   TokenSvc --> SessionStore
 
-  classDef service fill:#f9f,stroke:#333,stroke-width:1px;
-  class AuthAPI,TokenSvc,OTPProvider service;
+  classDef layer fill:#f6f8fa,stroke:#333,stroke-width:1px;
+  class UI,Presentation,Network,State,Local,Backend layer;
 ```
 
 -----
