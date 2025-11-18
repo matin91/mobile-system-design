@@ -209,48 +209,107 @@ Paste the block below into a Mermaid renderer to visualize the architecture.
 
 ```mermaid
 flowchart LR
+  %% Client group
   subgraph Client[Mobile App]
     direction TB
-    UI["Feed UI\n(Virtualized List, Thumbnails)"]
-    Prefetcher["Media Prefetcher\n(lookahead)"]
-    LocalCache["Local Cache\n(react-query / MMKV / SQLite)"]
-    UI --> Prefetcher
-    UI --> LocalCache
-    Prefetcher -->|HTTP| CDN
-    LocalCache --> UI
+
+    subgraph UI[UI Layer]
+      direction LR
+      FeedScreen["FeedScreen\n(uses useFeed)"]
+      PostScreen["PostScreen\n(uses usePost, comments)"]
+      Composer["Composer\n(uses useCreatePost)"]
+    end
+
+    subgraph Presentation[Presentation & Hooks]
+      direction TB
+      FeedCoordinator["FeedCoordinator\n(prefetch, subscription management)"]
+      useFeed["useFeed\n(src/hooks/useFeed.ts)"]
+      useReactToPost["useReactToPost\n(src/hooks/useReactToPost.ts)"]
+      useCreatePost["useCreatePost\n(src/hooks/useCreatePost.ts)"]
+    end
+
+    subgraph Services[Network & Realtime]
+      direction TB
+      ApiClient["API Client (axios/fetch)\nsrc/api/feedApi.ts\nGET /feed/home\nGET /post/{id}\nPOST /post\nPOST /post/{id}/reaction\nPOST /uploads/presign"]
+      Realtime["Realtime / Push\n(WebSocket / FCM / SSE)"]
+    end
+
+    subgraph State[State Layer]
+      direction LR
+      ReactQuery["react-query\n(query cache, mutations, persistence)"]
+      ReduxStore["Redux\n(auth, offlineQueue, UI state)"]
+      Persistors["persistQueryClient\nredux-persist / AsyncStorage (or MMKV)"]
+    end
+
+    subgraph LocalStorage[Local Persistence]
+      direction LR
+      AsyncStorage["AsyncStorage / MMKV\n(persist react-query + redux)"]
+      LocalDB["Local DB\n(Realm / SQLite) (optional)"]
+      ImageCache["Image Cache\n(thumbnails, FastImage)"]
+    end
+
+    %% UI -> Presentation
+    FeedScreen --> useFeed
+    PostScreen --> useReactToPost
+    Composer --> useCreatePost
+    FeedScreen --> FeedCoordinator
+    PostScreen --> FeedCoordinator
+    Composer --> FeedCoordinator
+
+    %% Hooks -> Services
+    useFeed --> ApiClient
+    useReactToPost --> ApiClient
+    useCreatePost --> ApiClient
+    FeedCoordinator --> Realtime
+    FeedCoordinator --> ApiClient
+
+    %% State interactions
+    useFeed --> ReactQuery
+    useReactToPost --> ReactQuery
+    useCreatePost --> ReactQuery
+    ReactQuery --> ApiClient
+    ReduxStore -->|enqueue offline actions| ApiClient
+
+    %% Persistence
+    ApiClient --> AsyncStorage
+    ReactQuery --> AsyncStorage
+    ReduxStore --> AsyncStorage
+    AsyncStorage --> LocalDB
+    ImageCache --> LocalDB
+
+    %% Realtime
+    Realtime --> FeedCoordinator
+    Realtime --> ReactQuery
+
   end
 
-  subgraph Edge[Edge & API]
+  %% Server group
+  subgraph Server[Backend Services]
     direction TB
-    CDN["CDN (media)"]
-    API["API Gateway\n(auth, throttling)"]
-  end
-
-  subgraph Backend[Backend Services]
-    direction TB
-    FeedSvc["Feed Aggregator Service\n(merge + candidate fetch)"]
+    FeedAPI["Feed API / Gateway\n(GET /feed/home, GET /post/{id}, POST /post)"]
+    FeedSvc["Feed Aggregator Service\n(candidate merge)"]
     Ranking["Ranking Service (ML)\n(model scoring)"]
     CandidateGen["Candidate Generator\n(graph + recs)"]
     Timeline["Timeline / Social Graph Service"]
+    CommentSvc["Comment & Reaction Service"]
+    UploadSvc["Upload Worker\n(transcode, presign -> S3)"]
+    Events["Kafka / PubSub\n(fanout pipeline)"]
     Cache["Redis / Memcache\n(per-user snapshots)"]
     Storage["Post Storage\n(Cassandra / DynamoDB)"]
-    CommentSvc["Comment & Reaction Service"]
-    UploadSvc["Upload Worker\n(transcode, store to S3)"]
-    Events["Kafka / PubSub\n(fanout pipeline)"]
-  end
-
-  subgraph Infra[Storage & Ops]
     DB["Primary DB\n(posts, users)"]
     S3["Object Store (S3)\n(media originals)"]
     MLStore["Feature Store / Offline ML outputs"]
+    CDN["CDN (media delivery)"]
   end
 
-  %% connections
-  Client -->|HTTPS| API
-  API --> FeedSvc
+  %% Connections client <-> server
+  ApiClient -- HTTP --> FeedAPI
+  Realtime -- WebSocket/Push --> FeedAPI
+
+  %% Backend internals
+  FeedAPI --> FeedSvc
   FeedSvc --> CandidateGen
   CandidateGen --> Timeline
-  CandidateGen --> Events
   FeedSvc --> Ranking
   Ranking --> Cache
   FeedSvc -->|read| Cache
@@ -262,10 +321,10 @@ flowchart LR
   Events --> Ranking
   Events --> Timeline
   CDN --> S3
-  API --> CDN
+  FeedAPI --> CDN
 
   classDef service fill:#f9f,stroke:#333,stroke-width:1px;
-  class FeedSvc,Ranking,CandidateGen,Timeline,CommentSvc,UploadSvc service;
+  class ApiClient,UploadSvc,FeedSvc,Ranking,CommentSvc service;
 ```
 
 -----
