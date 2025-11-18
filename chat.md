@@ -1,60 +1,40 @@
 # React‑Native Messenger — Design for React Query, Redux & Pusher
 
-I converted your original high‑level mobile messenger design into a concrete React‑Native client architecture that uses:
-- React Native (UI)
-- @tanstack/react-query for data fetching, caching and sync
-- Redux for global UI/auth/offline queue state
-- Pusher for realtime WebSocket updates
-- AsyncStorage (persist), FastImage (image caching), and an optional local DB (Realm / SQLite / MMKV) for heavier offline requirements
-
-Below you'll find:
-1. The original first question (as you asked it) and a note about the uploaded images you referenced.
-2. The full converted design (architecture, data models, endpoints, caching & sync strategy, Pusher integration, offline queue & uploads, example code snippets).
-3. The Mermaid diagram I prepared that captures the high‑level architecture (you can paste it in a Mermaid renderer).
-
----
-
 ## 1) Requirements
 
 - Functional requirements
     - Send/receive text messages
-      - Send/receive images/files (attachments)
-      - 1:1 chats only 
-      - View chats offline (cached)
-      - Support thumbnails & high-res profile images
+    - Send/receive images/files (attachments)
+    - 1:1 chats only
+    - View chats offline (cached)
+    - Support thumbnails & high-res profile images
 
 - Non-functional:
-  - Offline sending & queueing 
-  - Real-time updates (WebSocket / Pusher)
-  - Minimize battery & network usage (batching, pagination, incremental sync)
+    - Offline sending & queueing
+    - Real-time updates (WebSocket / Pusher)
+    - Minimize battery & network usage (batching, pagination, incremental sync)
+
 ---
 
-## 2) High‑level architecture (narrative)
+## 2) Caching, offline & sync strategy
 
-- UI Layer
-    - ChatListScreen — shows list of chats
-    - ChatThreadScreen — shows messages for a single chat (inverted list)
-    - Shared components: MessageBubble, AttachmentCard, TypingIndicator, Avatar (FastImage)
-
-- Presentation / Hooks / Coordinator layer
-    - React Query hooks: useChatList, useChatThread (useInfiniteQuery), useSendMessage (mutation)
-    - ChatCoordinator: orchestrates prefetching, navigation, and Pusher subscriptions
-    - Services: api client (axios/fetch), pusher service, upload worker
-
-- State layer
-    - react-query: server-synced data (chats & messages) + cache persistence to AsyncStorage
-    - redux: auth tokens, UI state (selectedChatId), offlineQueue (queued sends), presence/typing; persisted via redux-persist
-
-- Persistence & caching
-    - Persist react-query cache using @tanstack/react-query-persist-client + AsyncStorage
-    - Persist redux slices (auth, offline queue) using redux-persist + AsyncStorage (or MMKV for performance)
-    - Optional offline DB (Realm/SQLite) for full offline browsing and complex queries
-    - Image caching via FastImage (or platform-native caching)
-
-- Network
-    - REST API for fetch & post endpoints
-    - Pusher for realtime events (private and presence channels)
-    - Presigned uploads for attachments (S3 or equivalent)
+- Use react-query for fetching chats and messages.
+    - useInfiniteQuery for paginated lists (both chat list and messages).
+    - Set reasonable staleTime (e.g., 30s to 2min) so cached results show instantly.
+    - Persist react-query cache using createAsyncStoragePersistor.
+- Use react-query optimistic updates for send message:
+    - onMutate: insert a temporary message (localId, status='sending') into the cache.
+    - onSuccess: replace temporary message with server message.
+    - onError: if offline, push to redux offlineQueue; if fail due to server, mark as failed.
+- Offline queue:
+    - Redux holds an offline queue (persisted) of messages to retry.
+    - A background worker or app foreground handler replays the queue (upload attachments first).
+    - Show pending UI for queued messages (status='sending').
+- File uploads:
+    - Use presigned URLs; upload before sending message (or include attachment metadata to message and server can link).
+    - Show upload progress; retry with exponential backoff on failure.
+- Missed messages:
+    - On Pusher reconnect, re-sync using GET /chat/{chatId}/all/after?timestamp=lastSeen to fetch missed messages.
 
 ---
 
@@ -129,85 +109,41 @@ Realtime (Pusher) events:
 
 ---
 
-## 5) Caching, offline & sync strategy
+## 4) High‑level architecture (narrative)
 
-- Use react-query for fetching chats and messages.
-    - useInfiniteQuery for paginated lists (both chat list and messages).
-    - Set reasonable staleTime (e.g., 30s to 2min) so cached results show instantly.
-    - Persist react-query cache using createAsyncStoragePersistor.
-- Use react-query optimistic updates for send message:
-    - onMutate: insert a temporary message (localId, status='sending') into the cache.
-    - onSuccess: replace temporary message with server message.
-    - onError: if offline, push to redux offlineQueue; if fail due to server, mark as failed.
-- Offline queue:
-    - Redux holds an offline queue (persisted) of messages to retry.
-    - A background worker or app foreground handler replays the queue (upload attachments first).
-    - Show pending UI for queued messages (status='sending').
-- File uploads:
-    - Use presigned URLs; upload before sending message (or include attachment metadata to message and server can link).
-    - Show upload progress; retry with exponential backoff on failure.
-- Missed messages:
-    - On Pusher reconnect, re-sync using GET /chat/{chatId}/all/after?timestamp=lastSeen to fetch missed messages.
+- @tanstack/react-query for data fetching, caching and sync
+- Redux for global UI/auth/offline queue state
+- Pusher for realtime WebSocket updates
+- AsyncStorage (persist), FastImage (image caching), and an optional local DB (Realm / SQLite / MMKV) for heavier offline requirements
 
----
+- UI Layer
+    - ChatListScreen — shows list of chats
+    - ChatThreadScreen — shows messages for a single chat (inverted list)
+    - Shared components: MessageBubble, AttachmentCard, TypingIndicator, Avatar (FastImage)
 
-## 6) Pusher integration (RN specifics)
+- Presentation / Hooks / Coordinator layer
+    - React Query hooks: useChatList, useChatThread (useInfiniteQuery), useSendMessage (mutation)
+    - ChatCoordinator: orchestrates prefetching, navigation, and Pusher subscriptions
+    - Services: api client (axios/fetch), pusher service, upload worker
 
-- Use pusher-js/react-native.
-- Use private channels with server auth endpoint; include Authorization header with token.
-- Subscription pattern:
-    - ChatCoordinator subscribes to `private-chat-{chatId}` when thread opens.
-    - Subscribe to presence channels or `private-user-{userId}` for presence updates.
-- On events:
-    - message_created -> update react-query cache for that chat and invalidate chat list query.
-    - message_updated -> patch message in cache (read receipts, status changes).
-    - typing -> update Redux presence/typing slice to show typing indicators.
-- Reconnection:
-    - Pusher auto-reconnect with exponential backoff.
-    - On reconnect, trigger a delta fetch to ensure no messages were missed.
-- Security:
-    - Use TLS, short-lived tokens, re-auth on token refresh.
+- State layer
+    - react-query: server-synced data (chats & messages) + cache persistence to AsyncStorage
+    - redux: auth tokens, UI state (selectedChatId), offlineQueue (queued sends), presence/typing; persisted via redux-persist
+
+- Persistence & caching
+    - Persist react-query cache using @tanstack/react-query-persist-client + AsyncStorage
+    - Persist redux slices (auth, offline queue) using redux-persist + AsyncStorage (or MMKV for performance)
+    - Optional offline DB (Realm/SQLite) for full offline browsing and complex queries
+    - Image caching via FastImage (or platform-native caching)
+
+- Network
+    - REST API for fetch & post endpoints
+    - Pusher for realtime events (private and presence channels)
+    - Presigned uploads for attachments (S3 or equivalent)
 
 ---
 
-## 7) Redux: what to store vs what to query
-
-- react-query: chats and messages (server-authoritative data).
-- redux:
-    - authSlice: tokens and current user
-    - uiSlice: selectedChatId, open modals
-    - offlineSlice: sendQueue[] (persisted)
-    - presenceSlice: typing & presence states (ephemeral but useful globally)
-    - Optional: feature toggles & telemetry
-
-Reason: react-query is optimized for server sync and cache semantics; redux is better for cross-cutting app state and queuing durable tasks.
-
----
-
-## 8) Offline replay & uploads
-
-- When sending a message:
-    - If online: upload attachments via presigned URL, POST message to API, apply mutation result.
-    - If offline: create local optimistic message with localId and status='sending', push payload to redux offlineQueue.
-- Background replay:
-    - On connectivity restored (NetInfo), iterate offlineQueue, upload attachments then POST messages; on success remove from queue.
-    - If repeated failures, mark message 'failed' in cache and show retry UI.
-- Local DB:
-    - For heavy offline browsing, persist messages to Realm/SQLite and keep react-query cache in sync with DB.
-
----
-
-## 9) Performance & UX notes
-
-- VirtualizedList with inverted to render messages; avoid re-rendering the entire list on single message arrival.
-- Keep thumbnails small for chat list; lazy load full images in thread.
-- Avoid polling; rely on Pusher for real‑time updates. Use small background delta fetch on reconnect.
-- Garbage collect react-query cache (cacheTime) to bound memory.
-- Use MMKV or native storage for faster persistence if needed.
-
----
-
-## 10) Mermaid diagram (high level design)
+## 5) Mermaid diagram (high level design)
 
 Paste the block below into a Mermaid renderer (e.g., Mermaid Live Editor, VS Code Mermaid plugin, or GitHub Markdown with Mermaid support) to visualize the architecture.
 
@@ -312,7 +248,7 @@ flowchart LR
 
 -----
 
-## 11) Example code snippets
+## 6) Example code snippets
 
 Below are abridged snippets you can paste into your project. They show API client, pusher init & subscription, react-query hooks, redux slices, and a sample screen. These are starting points — adapt to your project structure and TypeScript/JS preferences.
 
@@ -601,7 +537,64 @@ export function useSendMessage() {
 
 ---
 
-## 12) Sequence flows (brief)
+
+## 7) Pusher integration (RN specifics)
+
+- Use pusher-js/react-native.
+- Use private channels with server auth endpoint; include Authorization header with token.
+- Subscription pattern:
+    - ChatCoordinator subscribes to `private-chat-{chatId}` when thread opens.
+    - Subscribe to presence channels or `private-user-{userId}` for presence updates.
+- On events:
+    - message_created -> update react-query cache for that chat and invalidate chat list query.
+    - message_updated -> patch message in cache (read receipts, status changes).
+    - typing -> update Redux presence/typing slice to show typing indicators.
+- Reconnection:
+    - Pusher auto-reconnect with exponential backoff.
+    - On reconnect, trigger a delta fetch to ensure no messages were missed.
+- Security:
+    - Use TLS, short-lived tokens, re-auth on token refresh.
+
+---
+
+## 8) Redux: what to store vs what to query
+
+- react-query: chats and messages (server-authoritative data).
+- redux:
+    - authSlice: tokens and current user
+    - uiSlice: selectedChatId, open modals
+    - offlineSlice: sendQueue[] (persisted)
+    - presenceSlice: typing & presence states (ephemeral but useful globally)
+    - Optional: feature toggles & telemetry
+
+Reason: react-query is optimized for server sync and cache semantics; redux is better for cross-cutting app state and queuing durable tasks.
+
+---
+
+## 9) Offline replay & uploads
+
+- When sending a message:
+    - If online: upload attachments via presigned URL, POST message to API, apply mutation result.
+    - If offline: create local optimistic message with localId and status='sending', push payload to redux offlineQueue.
+- Background replay:
+    - On connectivity restored (NetInfo), iterate offlineQueue, upload attachments then POST messages; on success remove from queue.
+    - If repeated failures, mark message 'failed' in cache and show retry UI.
+- Local DB:
+    - For heavy offline browsing, persist messages to Realm/SQLite and keep react-query cache in sync with DB.
+
+---
+
+## 10) Performance & UX notes
+
+- VirtualizedList with inverted to render messages; avoid re-rendering the entire list on single message arrival.
+- Keep thumbnails small for chat list; lazy load full images in thread.
+- Avoid polling; rely on Pusher for real‑time updates. Use small background delta fetch on reconnect.
+- Garbage collect react-query cache (cacheTime) to bound memory.
+- Use MMKV or native storage for faster persistence if needed.
+
+---
+
+## 11) Sequence flows (brief)
 
 - Open chat:
     - ChatListScreen uses useQuery('chats') (react-query).
@@ -620,7 +613,7 @@ export function useSendMessage() {
 
 ---
 
-## 13) Ops & security notes
+## 12) Ops & security notes
 
 - Authenticate pusher subscriptions via server endpoint (with token).
 - Short-lived tokens and refresh flow: reinitialize or update Pusher auth headers after refresh.
