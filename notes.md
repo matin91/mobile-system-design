@@ -1,5 +1,8 @@
 # Notes & Instructions — Per-item / Stack Persistent Notes, Attachments & Intake Data
 
+<img width="800" alt="svgviewer-png-output (10)" src="https://github.com/user-attachments/assets/71c2c93c-8944-4847-ab8c-494b1e8072a0" />
+
+
 ## 1) Requirements
 
 - Functional
