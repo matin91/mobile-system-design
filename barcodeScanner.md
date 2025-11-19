@@ -1,5 +1,6 @@
 # Scan UPC — Camera scan, match, add to stack & history
 
+<img width="800" alt="svgviewer-png-output (11)" src="https://github.com/user-attachments/assets/dfcce297-d1a6-4b7e-af15-eaeec707b4b8" />
 
 
 ## 1) Requirements
