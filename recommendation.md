@@ -1,5 +1,8 @@
 # Product Recommendations — Goal-based Suggestions UI & Architecture
 
+<img width="564" height="690" alt="Screen Shot 2025-11-18 at 6 46 26 PM" src="https://github.com/user-attachments/assets/9852b8f8-46c5-46c2-be71-70ff10ab0672" />
+
+
 ## 1) Requirements
 
 - Functional
