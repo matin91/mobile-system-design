@@ -1,5 +1,8 @@
 # Adherence — Today & History (Design + Implementation Blueprint)
 
+<img width="800" alt="svgviewer-png-output (6)" src="https://github.com/user-attachments/assets/6733a32c-40da-4e88-8721-d1541448749e" />
+
+
 ## 1) Requirements
 
 - Functional
