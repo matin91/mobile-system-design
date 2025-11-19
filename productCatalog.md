@@ -1,5 +1,7 @@
 # Supplements Catalog & Product Detail — Search, View, Reminders & Refill
 
+<img width="800" alt="svgviewer-png-output (8)" src="https://github.com/user-attachments/assets/a0f53dc3-45bb-4705-a778-443ee82df34b" />
+
 
 ## 1) Requirements
 
