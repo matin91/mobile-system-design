@@ -1,5 +1,8 @@
 # Refill Alerts & Refill Settings — Design for react-query, redux & Pusher
 
+<img width="800" alt="svgviewer-png-output (7)" src="https://github.com/user-attachments/assets/6ab974ab-3f2a-4e26-9877-07655e5b8409" />
+
+
 ## 1) Requirements
 
 - Functional
