@@ -1,5 +1,7 @@
 # Image 18 — Mini Food Delivery (Restaurant List, Menu, Basket & Order Status)
 
+<img width="829" height="351" alt="Screen Shot 2025-11-20 at 3 01 09 PM" src="https://github.com/user-attachments/assets/f3310137-93cc-4a45-a34a-c0d6a65815f3" />
+
 
 ## 1) Requirements
 
