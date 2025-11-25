@@ -228,6 +228,335 @@ export class VerificationCoordinator {
 }
 ```
 
+### MERMAID DIAGRAM
+
+```mermaid
+flowchart LR
+  %% UI Layer
+  subgraph UI["UI Layer\n(Mobile App)"]
+    direction TB
+    ScanIDScreen["ScanIDScreen\n(camera, overlay, flash/help/next)"]
+    LivenessCheckScreen["LivenessCheckScreen\n(selfie, guide, match/retry)"]
+    ScanIDScreen --> LivenessCheckScreen
+  end
+
+  %% Presentation & Hooks
+  subgraph Presentation["Presentation & Hooks"]
+    direction TB
+    VerificationCoordinator["VerificationCoordinator\n(step control, upload, queue, realtime)"]
+    useIDScan["useIDScan (mutation)"]
+    useLivenessCheck["useLivenessCheck (mutation)"]
+    VerificationCoordinator --> useIDScan
+    useIDScan --> ScanIDScreen
+    useLivenessCheck --> LivenessCheckScreen
+  end
+
+  %% Network & Realtime
+  subgraph Network["Network & Realtime"]
+    direction TB
+    ApiClient["ApiClient (REST /kyc/*)"]
+    PusherClient["Pusher\n(verification.{sessionId})"]
+    useIDScan --> ApiClient
+    useLivenessCheck --> ApiClient
+    VerificationCoordinator --> PusherClient
+  end
+
+  %% State layer
+  subgraph State["State Layer"]
+    direction TB
+    ReactQuery["react-query\n(mutation/result cache)"]
+    ReduxStore["Redux\n(offlineQueue, uiSlice, temp file)"]
+    Persistors["persistQueryClient\nredux-persist / MMKV"]
+    ReactQuery --> useIDScan
+    ReactQuery --> useLivenessCheck
+    ReduxStore --> VerificationCoordinator
+    Persistors --> ReduxStore
+  end
+
+  %% Local Persistence
+  subgraph Local["Local Persistence"]
+    direction TB
+    AsyncStorage["AsyncStorage / MMKV\n(transient image storage, queue)"]
+    ReduxStore --> AsyncStorage
+  end
+
+  %% Backend services
+  subgraph Backend["Backend Services"]
+    direction TB
+    KYCService["KYC Verification\n(OCR, barcode, liveness, ML)"]
+    ManualReviewSvc["ManualReview Service"]
+    EventBus["Event Bus / Realtime Worker"]
+    AnalyticsSvc["Analytics & Audit"]
+    FileStore["File Storage\n(temp images)"]
+    ApiClient --> KYCService
+    KYCService --> ManualReviewSvc
+    KYCService --> EventBus
+    EventBus --> PusherClient
+    KYCService --> FileStore
+    KYCService --> AnalyticsSvc
+    ManualReviewSvc --> EventBus
+  end
+
+  classDef service fill:#f9f,stroke:#333,stroke-width:1px;
+  class KYCService,ManualReviewSvc,EventBus,FileStore,AnalyticsSvc service;
+```
+
+---
+
+## 6) Coordinator Example — VerificationCoordinator
+
+```ts
+import { QueryClient } from '@tanstack/react-query';
+import Pusher from 'pusher-js/react-native';
+
+export class VerificationCoordinator {
+  private qc: QueryClient;
+  private pusher?: Pusher;
+  private sessionId: string;
+  private subs: string[] = [];
+
+  constructor(queryClient: QueryClient, sessionId: string, pusher?: Pusher) {
+    this.qc = queryClient;
+    this.sessionId = sessionId;
+    this.pusher = pusher;
+  }
+
+  // Control navigation: scan, selfie, manual review
+  nextStep(step: 'scan'|'selfie'|'review') {
+    // e.g., navigation logic based on scan/liveness results
+  }
+
+  // Submit ID scan via mutation
+  async submitID(imageData: Blob) {
+    await this.qc.fetchMutation({
+      mutationKey: ['idScan', this.sessionId],
+      mutationFn: async () => fetch('/api/kyc/id-scan', { method: 'POST', body: imageData })
+    });
+  }
+
+  // Submit selfie/liveness
+  async submitSelfie(imageData: Blob, steps: string[]) {
+    await this.qc.fetchMutation({
+      mutationKey: ['liveness', this.sessionId],
+      mutationFn: async () =>
+        fetch('/api/kyc/selfie', { method: 'POST', body: imageData, steps })
+    });
+  }
+
+  // Listen for real-time verification updates
+  subscribeToVerification() {
+    if (!this.pusher) return;
+    const ch = this.pusher.subscribe(`verification.${this.sessionId}`);
+    ch.bind('scan.status.updated', payload => {
+      this.qc.setQueryData(['idScan', this.sessionId], (old) => ({ ...(old || {}), ...payload }));
+    });
+    ch.bind('liveness.status.updated', payload => {
+      this.qc.setQueryData(['liveness', this.sessionId], (old) => ({ ...(old || {}), ...payload }));
+    });
+    ch.bind('manual_review.requested', payload => {
+      // surface manual review workflow in UI
+    });
+    this.subs.push(`verification.${this.sessionId}`);
+  }
+
+  teardown() {
+    if (!this.pusher) return;
+    for (const ch of this.subs) this.pusher.unsubscribe(ch);
+    this.subs = [];
+  }
+}
+```
+```ts
+import React, { useRef, useEffect, useState } from 'react';
+import { View, Text, Button, TouchableOpacity, StyleSheet } from 'react-native';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { RNCamera } from 'react-native-camera';
+import { VerificationCoordinator } from './VerificationCoordinator';
+import { useNavigation } from '@react-navigation/native'; // Assume react-navigation
+
+// Assume coordinator, api, sessionId, and pusher are initialized externally and passed as props
+export const ScanIDScreen = ({ coordinator, sessionId }) => {
+  const navigation = useNavigation();
+  const cameraRef = useRef<RNCamera>(null);
+  const [imageUri, setImageUri] = useState<string|null>(null);
+  const [ocrResult, setOcrResult] = useState<any>(null);
+
+  // react-query mutation for uploading image
+  const uploadMutation = useMutation({
+    mutationFn: async (data) => coordinator.submitID(data),
+    onSuccess: (result: any) => {
+      setOcrResult(result?.ocr);
+      if (result?.status === 'success') {
+        coordinator.nextStep('selfie');
+        navigation.navigate('LivenessCheckScreen', { coordinator, sessionId });
+      }
+    },
+    onError: () => alert('Scan failed, try again or get help')
+  });
+
+  useEffect(() => {
+    coordinator.subscribeToVerification();
+    return () => coordinator.teardown();
+  }, []);
+
+  const takePicture = async () => {
+    if (cameraRef.current) {
+      const data = await cameraRef.current.takePictureAsync({ quality: 0.7, base64: false });
+      setImageUri(data.uri);
+
+      // Optimistically show preview and start upload
+      uploadMutation.mutate(data.uri);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.header}>Scan your ID</Text>
+      <View style={styles.cameraBox}>
+        <RNCamera
+          ref={cameraRef}
+          style={styles.camera}
+          captureAudio={false}
+          type={RNCamera.Constants.Type.back}
+        />
+        <View style={styles.overlay}>
+          <Text style={styles.instructions}>Align document inside the frame</Text>
+          {/* Add MRZ/PDF417 markers */}
+        </View>
+      </View>
+      {/* Tool row */}
+      <View style={styles.toolRow}>
+        <Button title="Flash" onPress={() => {}} />
+        <Button title="Help" onPress={() => alert('Please align your passport/license within the frame, with barcode/MRZ visible.')} />
+        <Button title="Next: Selfie" onPress={takePicture} />
+      </View>
+      {/* OCR result preview */}
+      {ocrResult && (
+        <View style={styles.ocrResult}>
+          <Text>OCR: {ocrResult.name} • {ocrResult.dob} • Expires {ocrResult.expiry}</Text>
+        </View>
+      )}
+      <Text style={styles.footer}>Your document is processed securely for identity verification via OCR and barcode read.</Text>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: { flex: 1, paddingTop: 30, backgroundColor: '#f5f5f5' },
+  header: { fontSize: 22, fontWeight: 'bold', marginBottom: 10, alignSelf: 'center', color: '#257ddb' },
+  cameraBox: { flex: 1, margin: 12, borderRadius: 16, overflow: 'hidden', backgroundColor: '#eee', borderWidth: 2, borderColor: '#257ddb' },
+  camera: { flex: 1 },
+  overlay: { position: 'absolute', top: 40, left: 0, right: 0, alignItems: 'center', backgroundColor: 'transparent' },
+  instructions: { fontSize: 16, color: '#333', backgroundColor: 'rgba(255,255,255,0.75)', padding: 4, borderRadius: 8 },
+  toolRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', margin: 12 },
+  ocrResult: { padding: 12, marginTop: 8, backgroundColor: '#e8f6e8', borderRadius: 8, alignItems: 'center' },
+  footer: { padding: 10, fontSize: 13, textAlign: 'center', color: '#555' }
+});
+```
+
+```ts
+import React, { useRef, useEffect, useState } from 'react';
+import { View, Text, Button, Image, StyleSheet } from 'react-native';
+import { useMutation } from '@tanstack/react-query';
+import { VerificationCoordinator } from './VerificationCoordinator';
+import { useNavigation } from '@react-navigation/native'; // Assume react-navigation
+
+export const LivenessCheckScreen = ({ coordinator, sessionId, idPhotoUri }) => {
+  const navigation = useNavigation();
+  const [selfieUri, setSelfieUri] = useState<string|null>(null);
+  const [matchResult, setMatchResult] = useState<any>(null);
+
+  // Mutation for uploading selfie and liveness steps
+  const livenessMutation = useMutation({
+    mutationFn: async (data) => coordinator.submitSelfie(data.selfieUri, data.instructions),
+    onSuccess: (result: any) => {
+      setMatchResult(result);
+      if (result?.match) {
+        // Accept & continue is enabled
+      }
+    },
+    onError: () => alert('Face match failed, try again or request manual review')
+  });
+
+  useEffect(() => {
+    coordinator.subscribeToVerification();
+    return () => coordinator.teardown();
+  }, []);
+
+  const askForSelfie = async () => {
+    // This should open the camera for liveness capture, e.g., with guidance overlays.
+    // For stub:
+    const uri = 'path-to-liveness-selfie-image.jpg'; // Replace with real path
+    setSelfieUri(uri);
+
+    // Submit for matching, with performed instructions
+    livenessMutation.mutate({ selfieUri: uri, instructions: ['blink', 'smile'] });
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.header}>Selfie & Liveness Check</Text>
+      <Text style={styles.instructions}>Look straight - Blink twice<br/>Smile with mouth closed</Text>
+      <View style={styles.previewRow}>
+        <View style={styles.previewBox}>
+          <Text style={{ color: '#aaa', textAlign: 'center' }}>Your selfie preview</Text>
+          {selfieUri && (<Image source={{ uri: selfieUri }} style={{ width: 92, height: 100 }} />)}
+        </View>
+      </View>
+      <View style={styles.compareRow}>
+        <View style={styles.compareBox}>
+          <Text>ID photo</Text>
+          {idPhotoUri && (<Image source={{ uri: idPhotoUri }} style={{ width: 56, height: 60 }} />)}
+        </View>
+        <View style={styles.compareBox}>
+          <Text>Your selfie</Text>
+          {selfieUri && (<Image source={{ uri: selfieUri }} style={{ width: 56, height: 60 }} />)}
+        </View>
+      </View>
+      {matchResult && (
+        <View style={styles.resultRow}>
+          {matchResult.match ? (
+            <Text style={styles.matchBadge}>✓ Match</Text>
+          ) : (
+            <Text style={styles.mismatchBadge}>✗ Mismatch</Text>
+          )}
+        </View>
+      )}
+      <View style={styles.actionRow}>
+        <Button
+          title="Accept & continue"
+          onPress={() => navigation.navigate('NextStep')}
+          disabled={!matchResult?.match}
+          color="#257ddb"
+        />
+        <Button title="Retry" onPress={askForSelfie} color="#f0ad4e" />
+      </View>
+      <View style={styles.helpRow}>
+        {!matchResult?.match && (<Text style={styles.helpText}>Face mismatch? Try again or contact support for manual review.</Text>)}
+      </View>
+      <Text style={styles.footer}>Face match & liveness checks protect you and comply with KYC requirements.</Text>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f6f8fa', paddingTop: 35, paddingHorizontal: 16 },
+  header: { fontSize: 22, fontWeight: 'bold', color: '#257ddb', marginBottom: 8, alignSelf: 'center' },
+  instructions: { fontSize: 16, textAlign: 'center', marginBottom: 16, color:'#333' },
+  previewRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  previewBox: { width: 120, height: 128, borderRadius: 14, borderWidth: 2, borderColor:'#257ddb', alignItems:'center', justifyContent:'center', backgroundColor:'#fff' },
+  compareRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 14 },
+  compareBox: { alignItems:'center', padding:6, backgroundColor:'#eee', borderRadius:9, minWidth:90 },
+  resultRow: { alignItems: 'center', marginBottom: 8 },
+  matchBadge: { fontSize:22, color:'#249d35', fontWeight:'bold' },
+  mismatchBadge: { fontSize:22, color:'#c90808', fontWeight:'bold' },
+  actionRow: { flexDirection: 'row', justifyContent:'space-around', marginBottom: 7 },
+  helpRow: { alignItems:'center', marginBottom:8 },
+  helpText: { fontSize: 15, color: '#f0724d', textAlign:'center' },
+  footer: { textAlign: 'center', fontSize: 13, color: '#555', padding:9 }
+});
+```
+
 ---
 
 ## 7) Nuanced Concepts — Short Pros & Cons
