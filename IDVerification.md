@@ -1,5 +1,9 @@
 # Identity Verification Flow — Scan ID + Selfie & Liveness Check (react-query, redux, coordinator, Pusher)
 
+<img width="800" alt="svgviewer-png-output (12)" src="https://github.com/user-attachments/assets/391780da-fd51-4402-9e6d-1293cddf453d" />
+
+
+
 Short visual description:
 - Two mobile screens side-by-side:
     - Left: "Scan your ID" — camera-based frame for scanning passport/driver's license, guides to align document, detects MRZ (Machine Readable Zone) or PDF417 barcode, shows OCR results (name/DOB/expiry), flash/help/next controls.
