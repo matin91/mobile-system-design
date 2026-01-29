@@ -243,7 +243,7 @@ Real-time events (WebSocket / Pusher):
 
 ---
 
-## 4) High‑level architecture (narrative)
+## 5) High‑level architecture (narrative)
 
 - Mobile/Web Client:
     - Playbook Library: browse and search available templates
@@ -281,7 +281,7 @@ Real-time events (WebSocket / Pusher):
 
 ---
 
-## 5) Mermaid diagram (high level design)
+## 6) Mermaid diagram (high level design)
 
 ```mermaid
 flowchart LR
@@ -383,7 +383,7 @@ flowchart LR
 
 ---
 
-## 6) Example code snippets
+## 7) Example code snippets
 
 ### src/api/playbooksApi.ts
 ```typescript
@@ -637,7 +637,7 @@ export class WorkflowEngine {
 
 ---
 
-## 7) Auto-assignment logic
+## 8) Auto-assignment logic
 
 - Role-based assignment:
     - When playbook starts, system identifies participants by role
@@ -656,7 +656,7 @@ export class WorkflowEngine {
 
 ---
 
-## 8) Task dependencies & conditional logic
+## 9) Task dependencies & conditional logic
 
 - Dependencies:
     - Tasks can depend on completion of other tasks
@@ -675,7 +675,7 @@ export class WorkflowEngine {
 
 ---
 
-## 9) Dashboard & progress tracking
+## 10) Dashboard & progress tracking
 
 - Executive dashboard shows:
     - Overall completion percentage
@@ -697,7 +697,7 @@ export class WorkflowEngine {
 
 ---
 
-## 10) Performance & UX notes
+## 11) Performance & UX notes
 
 - Instant feedback:
     - Optimistic UI updates for task status
@@ -717,7 +717,7 @@ export class WorkflowEngine {
 
 ---
 
-## 11) Sequence flows (brief)
+## 12) Sequence flows (brief)
 
 - Start playbook:
     - Incident detected → Select playbook template
@@ -740,7 +740,7 @@ export class WorkflowEngine {
 
 ---
 
-## 12) Compliance & audit notes
+## 13) Compliance & audit notes
 
 - Audit trail:
     - Every task status change logged

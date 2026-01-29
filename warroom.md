@@ -243,7 +243,7 @@ Real-time events (WebSocket / Pusher):
 
 ---
 
-## 4) High‑level architecture (narrative)
+## 5) High‑level architecture (narrative)
 
 - Mobile/Web Client:
     - War Room Dashboard: overview of active incidents and rooms
@@ -287,7 +287,7 @@ Real-time events (WebSocket / Pusher):
 
 ---
 
-## 5) Mermaid diagram (high level design)
+## 6) Mermaid diagram (high level design)
 
 ```mermaid
 flowchart LR
@@ -411,7 +411,7 @@ flowchart LR
 
 ---
 
-## 6) Example code snippets
+## 7) Example code snippets
 
 ### src/api/warRoomApi.ts
 ```typescript
@@ -669,7 +669,7 @@ export function useJoinWarRoom() {
 
 ---
 
-## 7) WebRTC & media optimization
+## 8) WebRTC & media optimization
 
 - Peer connection setup:
     - Use SFU architecture for scalability (each client sends once, SFU routes)
@@ -688,7 +688,7 @@ export function useJoinWarRoom() {
 
 ---
 
-## 8) Forensic logging & compliance
+## 9) Forensic logging & compliance
 
 - Log integrity:
     - Each log entry hashes previous entry (blockchain-style)
@@ -710,7 +710,7 @@ export function useJoinWarRoom() {
 
 ---
 
-## 9) Breakout room mechanics
+## 10) Breakout room mechanics
 
 - Creation flow:
     - Incident commander creates breakout room
@@ -730,7 +730,7 @@ export function useJoinWarRoom() {
 
 ---
 
-## 10) Performance & UX notes
+## 11) Performance & UX notes
 
 - Low latency priorities:
     - < 150ms audio/video delay for natural conversation
@@ -750,7 +750,7 @@ export function useJoinWarRoom() {
 
 ---
 
-## 11) Sequence flows (brief)
+## 12) Sequence flows (brief)
 
 - Start war room:
     - Incident detected → Dashboard → Create War Room → Select incident type/severity
@@ -774,7 +774,7 @@ export function useJoinWarRoom() {
 
 ---
 
-## 12) Security & ops notes
+## 13) Security & ops notes
 
 - Authentication:
     - Multi-factor authentication required for access

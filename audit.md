@@ -325,7 +325,7 @@ Real-time events (WebSocket / Pusher):
 
 ---
 
-## 4) High‑level architecture (narrative)
+## 5) High‑level architecture (narrative)
 
 - Mobile/Web Client:
     - Audit Timeline Viewer: chronological display of incident activities
@@ -375,7 +375,7 @@ Real-time events (WebSocket / Pusher):
 
 ---
 
-## 5) Mermaid diagram (high level design)
+## 6) Mermaid diagram (high level design)
 
 ```mermaid
 flowchart LR
@@ -503,7 +503,7 @@ flowchart LR
 
 ---
 
-## 6) Example code snippets
+## 7) Example code snippets
 
 ### src/api/auditApi.ts
 ```typescript
@@ -834,7 +834,7 @@ export function TimelineVisualization({ incidentId }: { incidentId: string }) {
 
 ---
 
-## 7) Cryptographic integrity & blockchain
+## 8) Cryptographic integrity & blockchain
 
 - Hash chain mechanism:
     - Each log entry contains hash of previous entry
@@ -856,7 +856,7 @@ export function TimelineVisualization({ incidentId }: { incidentId: string }) {
 
 ---
 
-## 8) Real-time legal defense building
+## 9) Real-time legal defense building
 
 - Automatic documentation:
     - Every action timestamped and logged
@@ -878,7 +878,7 @@ export function TimelineVisualization({ incidentId }: { incidentId: string }) {
 
 ---
 
-## 9) Compliance framework support
+## 10) Compliance framework support
 
 - GDPR breach notification:
     - 72-hour clock tracking
@@ -906,7 +906,7 @@ export function TimelineVisualization({ incidentId }: { incidentId: string }) {
 
 ---
 
-## 10) Evidence collection & chain of custody
+## 11) Evidence collection & chain of custody
 
 - Evidence types:
     - Screenshots (system state)
@@ -930,7 +930,7 @@ export function TimelineVisualization({ incidentId }: { incidentId: string }) {
 
 ---
 
-## 11) Sequence flows (brief)
+## 12) Sequence flows (brief)
 
 - Incident starts:
     - System creates genesis audit log
@@ -956,7 +956,7 @@ export function TimelineVisualization({ incidentId }: { incidentId: string }) {
 
 ---
 
-## 12) Performance & retention notes
+## 13) Performance & retention notes
 
 - Write performance:
     - Append-only writes are fast
@@ -984,7 +984,7 @@ export function TimelineVisualization({ incidentId }: { incidentId: string }) {
 
 ---
 
-## 13) Security & access control notes
+## 14) Security & access control notes
 
 - Access control:
     - Role-based access to audit logs

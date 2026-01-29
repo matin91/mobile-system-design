@@ -268,7 +268,7 @@ Real-time events (WebSocket / Pusher):
 
 ---
 
-## 4) High‑level architecture (narrative)
+## 5) High‑level architecture (narrative)
 
 - Mobile/Web Client:
     - Notification Composer: create and send alerts
@@ -313,7 +313,7 @@ Real-time events (WebSocket / Pusher):
 
 ---
 
-## 5) Mermaid diagram (high level design)
+## 6) Mermaid diagram (high level design)
 
 ```mermaid
 flowchart LR
@@ -441,7 +441,7 @@ flowchart LR
 
 ---
 
-## 6) Example code snippets
+## 7) Example code snippets
 
 ### src/api/notificationsApi.ts
 ```typescript
@@ -717,7 +717,7 @@ export class PushAdapter {
 
 ---
 
-## 7) Multi-channel strategy & fallback
+## 8) Multi-channel strategy & fallback
 
 - Channel selection:
     - Critical alerts: SMS + Voice + Push simultaneously
@@ -738,7 +738,7 @@ export class PushAdapter {
 
 ---
 
-## 8) Acknowledgment & two-way communication
+## 9) Acknowledgment & two-way communication
 
 - Acknowledgment methods:
     - Push: tap "Acknowledge" button in notification
@@ -759,7 +759,7 @@ export class PushAdapter {
 
 ---
 
-## 9) Escalation rules
+## 10) Escalation rules
 
 - Time-based escalation:
     - No acknowledgment within 15 minutes → resend
@@ -776,7 +776,7 @@ export class PushAdapter {
 
 ---
 
-## 10) Performance & UX notes
+## 11) Performance & UX notes
 
 - Low latency:
     - Message queue for async processing
@@ -798,7 +798,7 @@ export class PushAdapter {
 
 ---
 
-## 11) Sequence flows (brief)
+## 12) Sequence flows (brief)
 
 - Send critical alert:
     - Incident detected → Open notification composer
@@ -825,7 +825,7 @@ export class PushAdapter {
 
 ---
 
-## 12) Compliance & security notes
+## 13) Compliance & security notes
 
 - TCPA compliance:
     - Obtain consent before sending SMS/voice

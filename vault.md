@@ -225,7 +225,7 @@ Real-time events (WebSocket / Pusher):
 
 ---
 
-## 4) High‑level architecture (narrative)
+## 5) High‑level architecture (narrative)
 
 - Mobile/Web Client:
     - Vault Browser: category-based navigation and search
@@ -272,7 +272,7 @@ Real-time events (WebSocket / Pusher):
 
 ---
 
-## 5) Mermaid diagram (high level design)
+## 6) Mermaid diagram (high level design)
 
 ```mermaid
 flowchart LR
@@ -384,7 +384,7 @@ flowchart LR
 
 ---
 
-## 6) Example code snippets
+## 7) Example code snippets
 
 ### src/api/vaultApi.ts
 ```typescript
@@ -625,7 +625,7 @@ export function useDownloadDocument() {
 
 ---
 
-## 7) Immutability & disaster recovery
+## 8) Immutability & disaster recovery
 
 - Write-once storage:
     - S3 Object Lock in compliance mode
@@ -649,7 +649,7 @@ export function useDownloadDocument() {
 
 ---
 
-## 8) Emergency access (break-glass)
+## 9) Emergency access (break-glass)
 
 - Break-glass procedure:
     - User requests emergency access with justification
@@ -671,7 +671,7 @@ export function useDownloadDocument() {
 
 ---
 
-## 9) Document lifecycle management
+## 10) Document lifecycle management
 
 - Expiration tracking:
     - Documents can have expiration dates (e.g., insurance policies)
@@ -690,7 +690,7 @@ export function useDownloadDocument() {
 
 ---
 
-## 10) Performance & UX notes
+## 11) Performance & UX notes
 
 - Fast access:
     - CDN for frequently accessed documents
@@ -712,7 +712,7 @@ export function useDownloadDocument() {
 
 ---
 
-## 11) Sequence flows (brief)
+## 12) Sequence flows (brief)
 
 - Upload document:
     - User selects file and category
@@ -739,7 +739,7 @@ export function useDownloadDocument() {
 
 ---
 
-## 12) Security & compliance notes
+## 13) Security & compliance notes
 
 - Encryption:
     - AES-256 encryption at rest
