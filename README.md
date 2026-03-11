@@ -82,6 +82,7 @@ This repository addresses the **architectural challenges** that mobile engineers
 - 🚨 [War Room/Incident Management](./warroom.md)
 - 📓 [Notes & Documentation](./notes.md)
 - 📋 [Playbooks](./playbooks.md)
+- 🥽 [Hands-Free Workflow (SOP)](./sop.md)
 
 ---
 
@@ -129,6 +130,7 @@ Each pattern leverages modern mobile development tools:
 | **Networking** | Axios, Fetch API, REST, GraphQL |
 | **Security** | iOS Keychain, Android Keystore, Biometric Auth |
 | **Media** | CDN, Progressive Loading, Image Caching |
+| **AR & Voice** | ViroReact, react-native-arkit, whisper.rn, Picovoice Rhino, Expo Config Plugins |
 
 ---
 
